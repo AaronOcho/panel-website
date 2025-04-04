@@ -23,9 +23,9 @@
         </div>
 
         <div class="search-bar">
-            <input type="text" id="searchKey" placeholder="Search by key">
-            <input type="text" id="searchDevice" placeholder="Search by device ID">
-            <select id="filterStatus">
+            <input type="text" id="searchKey" placeholder="Search by key" class="search-input">
+            <input type="text" id="searchDevice" placeholder="Search by device ID" class="search-input">
+            <select id="filterStatus" class="filter-select">
                 <option value="all">All</option>
                 <option value="active">Active</option>
                 <option value="expired">Expired</option>
@@ -59,7 +59,7 @@
                 <div class="form-group">
                     <label for="keyValue">Key Value:</label>
                     <input type="text" id="keyValue" name="keyValue" readonly>
-                    <button type="button" id="generateKey">Generate Key</button>
+                    <button type="button" id="generateKey" class="generate-btn">Generate Key</button>
                 </div>
                 <div class="form-group">
                     <label for="deviceId">Device ID:</label>
