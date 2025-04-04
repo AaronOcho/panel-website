@@ -23,7 +23,6 @@ function loadKeys() {
         })
         .then(data => {
             updateTable(data);
-            return data;
         })
         .catch(error => {
             console.error('Error loading keys:', error);
@@ -82,7 +81,7 @@ function generateRandomKey() {
 
 async function handleAddKey(event) {
     event.preventDefault();
-    
+
     const keyValue = document.getElementById('keyValue').value;
     const deviceId = document.getElementById('deviceId').value;
     const expirationDate = document.getElementById('expirationDate').value;
@@ -123,7 +122,7 @@ function filterKeys() {
     const searchTerm = document.getElementById('searchKey').value;
     const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
-    
+
     fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
         .then(response => response.json())
         .then(data => {
