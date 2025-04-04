@@ -1,3 +1,4 @@
+
 <?php
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -20,26 +21,22 @@ try {
     $conn = new PDO($dsn);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $conn->exec("
-        CREATE TABLE IF NOT EXISTS license_keys (
-            id SERIAL PRIMARY KEY,
-            key_value VARCHAR(255) NOT NULL,
-            device_id VARCHAR(255),
-            status VARCHAR(50) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP,
-            is_used BOOLEAN DEFAULT FALSE
-        )
-    ");
+    $conn->exec("CREATE TABLE IF NOT EXISTS license_keys (
+        id SERIAL PRIMARY KEY,
+        key_value VARCHAR(255) UNIQUE NOT NULL,
+        device_id VARCHAR(255),
+        status VARCHAR(50) DEFAULT 'unused',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        is_used BOOLEAN DEFAULT FALSE
+    )");
 
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         $data = json_decode(file_get_contents('php://input'), true);
         $conn->beginTransaction();
-        
         try {
             $stmt = $conn->prepare("DELETE FROM license_keys WHERE key_value = ?");
             $result = $stmt->execute([$data['key_value']]);
-            
             if ($result && $stmt->rowCount() > 0) {
                 $conn->commit();
                 echo json_encode(['success' => true, 'message' => 'Key deleted successfully']);
@@ -59,11 +56,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
         $data = json_decode(file_get_contents('php://input'), true);
         $conn->beginTransaction();
-        
         try {
             $stmt = $conn->prepare("UPDATE license_keys SET expires_at = ? WHERE key_value = ?");
             $result = $stmt->execute([$data['expires_at'], $data['key_value']]);
-            
             if ($result && $stmt->rowCount() > 0) {
                 $conn->commit();
                 echo json_encode(['success' => true, 'message' => 'Key renewed successfully']);
@@ -83,11 +78,9 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
         $conn->beginTransaction();
-        
         try {
-            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, device_id, status, expires_at) VALUES (?, ?, 'unused', ?)");
+            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, device_id, expires_at) VALUES (?, ?, ?)");
             $result = $stmt->execute([$data['key_value'], $data['device_id'], $data['expires_at']]);
-            
             if ($result) {
                 $conn->commit();
                 echo json_encode(['success' => true, 'message' => 'Key added successfully']);
@@ -109,6 +102,7 @@ try {
         $device = $_GET['device'] ?? '';
         $status = $_GET['status'] ?? 'all';
         $key = $_GET['key'] ?? '';
+        $specific_device = $_GET['specific_device'] ?? '';
 
         $query = "SELECT * FROM license_keys WHERE 1=1";
         $params = [];
@@ -116,6 +110,11 @@ try {
         if ($key) {
             $query .= " AND key_value = ?";
             $params[] = $key;
+        }
+
+        if ($specific_device) {
+            $query .= " AND device_id = ? AND status != 'expired'";
+            $params[] = $specific_device;
         }
 
         if ($search) {
