@@ -13,33 +13,30 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-function showToast(message, type) {
-    const toast = document.getElementById('toast');
-    toast.textContent = message;
-    toast.className = `toast toast-${type}`;
-    setTimeout(() => toast.className = 'toast', 3000);
-}
-
 function loadKeys() {
-    document.querySelector('.table-container').classList.add('loading');
     return fetch('/check_key')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             updateTable(data);
-            document.querySelector('.table-container').classList.remove('loading');
+            return data;
         })
         .catch(error => {
-            showToast(error.message, 'error');
-            document.querySelector('.table-container').classList.remove('loading');
+            console.error('Error loading keys:', error);
+            alert('Error loading keys: ' + error.message);
         });
 }
 
 function updateTable(keys) {
     const tbody = document.getElementById('keyTableBody');
     tbody.innerHTML = '';
+
     keys.forEach(key => {
         const row = document.createElement('tr');
-        row.dataset.status = key.status;
         row.innerHTML = `
             <td>${key.key_value}</td>
             <td class="device-id">${key.device_id || 'Not assigned'}</td>
@@ -71,7 +68,6 @@ function showAddKeyModal() {
 
 function hideAddKeyModal() {
     document.getElementById('addKeyModal').style.display = 'none';
-    document.getElementById('addKeyForm').reset();
 }
 
 function generateRandomKey() {
@@ -86,19 +82,22 @@ function generateRandomKey() {
 
 async function handleAddKey(event) {
     event.preventDefault();
+    
     const keyValue = document.getElementById('keyValue').value;
     const deviceId = document.getElementById('deviceId').value;
     const expirationDate = document.getElementById('expirationDate').value;
 
     if (!keyValue || !deviceId || !expirationDate) {
-        showToast('Please fill in all fields', 'error');
+        alert('Please fill in all fields');
         return;
     }
 
     try {
         const response = await fetch('/check_key', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 key_value: keyValue,
                 device_id: deviceId,
@@ -107,15 +106,16 @@ async function handleAddKey(event) {
         });
 
         const result = await response.json();
+
         if (result.success) {
             hideAddKeyModal();
             await loadKeys();
-            showToast('Key added successfully', 'success');
+            document.getElementById('addKeyForm').reset();
         } else {
-            throw new Error(result.message);
+            throw new Error(result.message || 'Failed to add key');
         }
     } catch (error) {
-        showToast(error.message, 'error');
+        alert('Error adding key: ' + error.message);
     }
 }
 
@@ -124,30 +124,24 @@ function filterKeys() {
     const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
     
-    document.querySelector('.table-container').classList.add('loading');
     fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
         .then(response => response.json())
         .then(data => {
             updateTable(data);
-            document.querySelector('.table-container').classList.remove('loading');
         })
-        .catch(error => {
-            showToast(error.message, 'error');
-            document.querySelector('.table-container').classList.remove('loading');
-        });
+        .catch(error => console.error('Error:', error));
 }
 
-async function viewKey(key) {
-    try {
-        const response = await fetch(`/check_key?key=${key}`);
-        const data = await response.json();
-        if (data.length > 0) {
-            const keyInfo = data[0];
-            alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
-        }
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
+function viewKey(key) {
+    fetch(`/check_key?key=${key}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const keyInfo = data[0];
+                alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 async function renewKey(key) {
@@ -156,7 +150,9 @@ async function renewKey(key) {
         try {
             const response = await fetch('/check_key', {
                 method: 'PUT',
-                headers: {'Content-Type': 'application/json'},
+                headers: {
+                    'Content-Type': 'application/json',
+                },
                 body: JSON.stringify({
                     key_value: key,
                     expires_at: newExpirationDate
@@ -164,14 +160,15 @@ async function renewKey(key) {
             });
 
             const result = await response.json();
+
             if (result.success) {
                 await loadKeys();
-                showToast('Key renewed successfully', 'success');
+                alert('Key renewed successfully');
             } else {
-                throw new Error(result.message);
+                throw new Error(result.message || 'Failed to renew key');
             }
         } catch (error) {
-            showToast(error.message, 'error');
+            alert('Error renewing key: ' + error.message);
         }
     }
 }
@@ -181,19 +178,24 @@ async function deleteKey(key) {
         try {
             const response = await fetch('/check_key', {
                 method: 'DELETE',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({key_value: key})
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key_value: key
+                })
             });
 
             const result = await response.json();
+
             if (result.success) {
                 await loadKeys();
-                showToast(result.message, 'success');
+                alert(result.message);
             } else {
-                throw new Error(result.message);
+                throw new Error(result.message || 'Failed to delete key');
             }
         } catch (error) {
-            showToast(error.message, 'error');
+            alert('Error deleting key: ' + error.message);
         }
     }
 }
