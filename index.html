@@ -4,34 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Winter Key System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Winter Key System (MBF)</h1>
-            <span class="version">version 1.0</span>
+            <div class="header-left">
+                <h1>Winter Key System (MBF)</h1>
+                <span class="version">version 1.0</span>
+            </div>
+            <div class="header-right">
+                <span class="server-status online">
+                    <i class="fas fa-circle"></i> Server Online
+                </span>
+            </div>
         </header>
         
         <div class="welcome-bar">
-            <h2>Welcome, OchoOcho</h2>
+            <div class="welcome-left">
+                <h2>Welcome, OchoOcho</h2>
+                <span class="user-role">Administrator</span>
+            </div>
+            <div class="welcome-right">
+                <span class="date-time" id="currentDateTime"></span>
+            </div>
         </div>
 
         <div class="manage-section">
-            <h3>Manage API Keys</h3>
-            <button class="add-key-btn">Add New Key</button>
+            <div class="section-header">
+                <h3><i class="fas fa-key"></i> Manage API Keys</h3>
+                <button class="add-key-btn"><i class="fas fa-plus"></i> Add New Key</button>
+            </div>
+            <div class="stats-panel">
+                <div class="stat-card">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="stat-value" id="activeKeys">0</span>
+                    <span class="stat-label">Active Keys</span>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-times-circle"></i>
+                    <span class="stat-value" id="expiredKeys">0</span>
+                    <span class="stat-label">Expired Keys</span>
+                </div>
+                <div class="stat-card">
+                    <i class="fas fa-clock"></i>
+                    <span class="stat-value" id="unusedKeys">0</span>
+                    <span class="stat-label">Unused Keys</span>
+                </div>
+            </div>
         </div>
 
         <div class="search-bar">
-            <input type="text" id="searchKey" placeholder="Search by key">
-            <input type="text" id="searchDevice" placeholder="Search by device ID">
+            <div class="search-group">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchKey" placeholder="Search by key">
+            </div>
+            <div class="search-group">
+                <i class="fas fa-microchip"></i>
+                <input type="text" id="searchDevice" placeholder="Search by HWID">
+            </div>
             <select id="filterStatus">
-                <option value="all">All</option>
+                <option value="all">All Status</option>
                 <option value="active">Active</option>
                 <option value="expired">Expired</option>
                 <option value="unused">Unused</option>
             </select>
-            <button class="filter-btn">Filter</button>
+            <button class="filter-btn"><i class="fas fa-filter"></i> Filter</button>
         </div>
 
         <div class="table-container">
@@ -39,10 +78,11 @@
                 <thead>
                     <tr>
                         <th>Key</th>
-                        <th>Device ID</th>
+                        <th>HWID</th>
                         <th>Status</th>
                         <th>Created At</th>
                         <th>Expires At</th>
+                        <th>Total Uses</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -53,26 +93,41 @@
 
     <div id="addKeyModal" class="modal">
         <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Add New Key</h2>
+            <div class="modal-header">
+                <h2><i class="fas fa-key"></i> Add New Key</h2>
+                <span class="close">&times;</span>
+            </div>
             <form id="addKeyForm">
                 <div class="form-group">
                     <label for="keyValue">Key Value:</label>
-                    <input type="text" id="keyValue" name="keyValue" readonly>
-                    <button type="button" id="generateKey">Generate Key</button>
-                </div>
-                <div class="form-group">
-                    <label for="deviceId">Device ID:</label>
-                    <input type="text" id="deviceId" name="deviceId" required>
+                    <div class="input-group">
+                        <input type="text" id="keyValue" name="keyValue" readonly>
+                        <button type="button" id="generateKey"><i class="fas fa-random"></i> Generate</button>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="expirationDate">Expiration Date:</label>
                     <input type="datetime-local" id="expirationDate" name="expirationDate" required>
                 </div>
-                <button type="submit" class="submit-btn">Add Key</button>
+                <div class="form-group">
+                    <label for="keyAmount">Amount of Keys:</label>
+                    <input type="number" id="keyAmount" name="keyAmount" min="1" value="1" required>
+                </div>
+                <button type="submit" class="submit-btn"><i class="fas fa-plus-circle"></i> Add Key</button>
             </form>
         </div>
     </div>
+
+    <div id="viewKeyModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-info-circle"></i> Key Details</h2>
+                <span class="close">&times;</span>
+            </div>
+            <div class="key-details" id="keyDetails"></div>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
     <script src="script.js"></script>
 </body>
