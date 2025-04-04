@@ -39,6 +39,7 @@ function updateTable(keys) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${key.key_value}</td>
+            <td class="device-id">${key.device_id || 'Not assigned'}</td>
             <td>${key.status}</td>
             <td>${formatDate(key.created_at)}</td>
             <td>${formatDate(key.expires_at)}</td>
@@ -83,9 +84,10 @@ async function handleAddKey(event) {
     event.preventDefault();
     
     const keyValue = document.getElementById('keyValue').value;
+    const deviceId = document.getElementById('deviceId').value;
     const expirationDate = document.getElementById('expirationDate').value;
 
-    if (!keyValue || !expirationDate) {
+    if (!keyValue || !deviceId || !expirationDate) {
         alert('Please fill in all fields');
         return;
     }
@@ -98,6 +100,7 @@ async function handleAddKey(event) {
             },
             body: JSON.stringify({
                 key_value: keyValue,
+                device_id: deviceId,
                 expires_at: expirationDate
             })
         });
@@ -118,9 +121,10 @@ async function handleAddKey(event) {
 
 function filterKeys() {
     const searchTerm = document.getElementById('searchKey').value;
+    const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
     
-    fetch(`/check_key?search=${searchTerm}&status=${status}`)
+    fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
         .then(response => response.json())
         .then(data => {
             updateTable(data);
@@ -129,7 +133,15 @@ function filterKeys() {
 }
 
 function viewKey(key) {
-    alert(`Key Details:\n${key}`);
+    fetch(`/check_key?key=${key}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.length > 0) {
+                const keyInfo = data[0];
+                alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
+            }
+        })
+        .catch(error => console.error('Error:', error));
 }
 
 async function renewKey(key) {
