@@ -118,13 +118,55 @@ function filterKeys() {
 }
 
 function viewKey(key) {
-    console.log('View key:', key);
+    alert(`Key Details:\n${key}`);
 }
 
 function renewKey(key) {
-    console.log('Renew key:', key);
+    const newExpirationDate = prompt('Enter new expiration date (YYYY-MM-DD HH:mm:ss):');
+    if (newExpirationDate) {
+        fetch('/check_key', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                key_value: key,
+                expires_at: newExpirationDate
+            })
+        })
+        .then(response => {
+            if (response.ok) {
+                loadKeys();
+                alert('Key renewed successfully');
+            } else {
+                throw new Error('Failed to renew key');
+            }
+        })
+        .catch(error => alert('Error renewing key: ' + error.message));
+    }
 }
 
-function deleteKey(key) {
-    console.log('Delete key:', key);
+async function deleteKey(key) {
+    if (confirm('Are you sure you want to delete this key?')) {
+        try {
+            const response = await fetch('/check_key', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key_value: key
+                })
+            });
+
+            if (response.ok) {
+                loadKeys();
+                alert('Key deleted successfully');
+            } else {
+                throw new Error('Failed to delete key');
+            }
+        } catch (error) {
+            alert('Error deleting key: ' + error.message);
+        }
+    }
 }
