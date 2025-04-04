@@ -17,20 +17,26 @@ try {
     $conn = new PDO($dsn);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    $conn->exec("
-        CREATE TABLE IF NOT EXISTS license_keys (
-            id SERIAL PRIMARY KEY,
-            key_value VARCHAR(255) NOT NULL,
-            status VARCHAR(50) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP,
-            is_used BOOLEAN DEFAULT FALSE
-        )
-    ");
+    if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $conn->prepare("DELETE FROM license_keys WHERE key_value = ?");
+        $stmt->execute([$data['key_value']]);
+        
+        echo json_encode(['success' => true]);
+        exit;
+    }
+
+    if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        $stmt = $conn->prepare("UPDATE license_keys SET expires_at = ? WHERE key_value = ?");
+        $stmt->execute([$data['expires_at'], $data['key_value']]);
+        
+        echo json_encode(['success' => true]);
+        exit;
+    }
 
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
-        
         $stmt = $conn->prepare("INSERT INTO license_keys (key_value, status, expires_at) VALUES (?, 'unused', ?)");
         $stmt->execute([$data['key_value'], $data['expires_at']]);
         
