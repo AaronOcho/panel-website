@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Winter Key System</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Winter Key System (MBF)</h1>
+            <span class="version">version 1.0</span>
+        </header>
+        
+        <div class="welcome-bar">
+            <h2>Welcome, OchoOcho</h2>
+        </div>
+
+        <div class="manage-section">
+            <h3>Manage API Keys</h3>
+            <button class="add-key-btn">Add New Key</button>
+        </div>
+
+        <div class="search-bar">
+            <input type="text" id="searchKey" placeholder="Search by key">
+            <select id="filterStatus">
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="expired">Expired</option>
+                <option value="unused">Unused</option>
+            </select>
+            <button class="filter-btn">Filter</button>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Expires At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="keyTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="addKeyModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Add New Key</h2>
+            <form id="addKeyForm">
+                <div class="form-group">
+                    <label for="keyValue">Key Value:</label>
+                    <input type="text" id="keyValue" name="keyValue" readonly>
+                    <button type="button" id="generateKey">Generate Key</button>
+                </div>
+                <div class="form-group">
+                    <label for="expirationDate">Expiration Date:</label>
+                    <input type="datetime-local" id="expirationDate" name="expirationDate" required>
+                </div>
+                <button type="submit" class="submit-btn">Add Key</button>
+            </form>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
