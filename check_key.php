@@ -20,6 +20,18 @@ try {
     $conn = new PDO($dsn);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
+    $conn->exec("
+        CREATE TABLE IF NOT EXISTS license_keys (
+            id SERIAL PRIMARY KEY,
+            key_value VARCHAR(255) NOT NULL,
+            device_id VARCHAR(255),
+            status VARCHAR(50) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP,
+            is_used BOOLEAN DEFAULT FALSE
+        )
+    ");
+
     if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
         $data = json_decode(file_get_contents('php://input'), true);
         $conn->beginTransaction();
@@ -73,8 +85,8 @@ try {
         $conn->beginTransaction();
         
         try {
-            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, status, expires_at) VALUES (?, 'unused', ?)");
-            $result = $stmt->execute([$data['key_value'], $data['expires_at']]);
+            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, device_id, status, expires_at) VALUES (?, ?, 'unused', ?)");
+            $result = $stmt->execute([$data['key_value'], $data['device_id'], $data['expires_at']]);
             
             if ($result) {
                 $conn->commit();
@@ -94,14 +106,26 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $search = $_GET['search'] ?? '';
+        $device = $_GET['device'] ?? '';
         $status = $_GET['status'] ?? 'all';
+        $key = $_GET['key'] ?? '';
 
         $query = "SELECT * FROM license_keys WHERE 1=1";
         $params = [];
 
+        if ($key) {
+            $query .= " AND key_value = ?";
+            $params[] = $key;
+        }
+
         if ($search) {
             $query .= " AND key_value LIKE ?";
             $params[] = "%$search%";
+        }
+
+        if ($device) {
+            $query .= " AND device_id LIKE ?";
+            $params[] = "%$device%";
         }
 
         if ($status !== 'all') {
