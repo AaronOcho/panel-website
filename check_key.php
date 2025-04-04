@@ -16,7 +16,7 @@ try {
         $db_params['user'],
         $db_params['pass']
     );
-    
+
     $conn = new PDO($dsn);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
@@ -34,7 +34,7 @@ try {
         activation_date TIMESTAMP,
         total_uses INTEGER DEFAULT 0
     )";
-    
+
     $conn->exec($createTableSQL);
 
     $alterTableCommands = [
@@ -57,15 +57,15 @@ try {
     if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['key']) && isset($_GET['hwid'])) {
         $key = $_GET['key'];
         $hwid = $_GET['hwid'];
-        
+
         $stmt = $conn->prepare("SELECT * FROM license_keys WHERE key_value = ?");
         $stmt->execute([$key]);
         $key_data = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($key_data) {
             $expires_at = new DateTime($key_data['expires_at']);
             $current_time = new DateTime();
-            
+
             if ($expires_at > $current_time) {
                 if (!$key_data['hwid']) {
                     $update_stmt = $conn->prepare("
