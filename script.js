@@ -46,6 +46,8 @@ function loadKeys() {
     fetch('/check_key')
         .then(response => response.json())
         .then(data => {
+            const hwid = data.hwid || 'Not assigned';
+            document.getElementById('deviceId').textContent = hwid;
             const keysArray = Array.isArray(data) ? data : [];
             updateTable(keysArray);
             updateStats(keysArray);
@@ -105,8 +107,9 @@ async function handleAddKey(e) {
     const keyValue = document.getElementById('keyValue').value;
     const expirationDate = document.getElementById('expirationDate').value;
     const keyAmount = parseInt(document.getElementById('keyAmount').value) || 1;
+    const hwid = document.getElementById('deviceId').textContent;
 
-    if (!keyValue || !expirationDate) {
+    if (!keyValue || !expirationDate || !hwid) {
         showToast('Please fill all fields', 'error');
         return;
     }
@@ -115,7 +118,7 @@ async function handleAddKey(e) {
         const response = await fetch('/check_key', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key_value: keyValue, expires_at: expirationDate, amount: keyAmount})
+            body: JSON.stringify({key_value: keyValue, expires_at: expirationDate, amount: keyAmount, hwid: hwid})
         });
         const result = await response.json();
         if (result.success) {
