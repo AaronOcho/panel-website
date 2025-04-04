@@ -14,12 +14,21 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadKeys() {
-    fetch('/check_key')
-        .then(response => response.json())
+    return fetch('/check_key')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             updateTable(data);
+            return data;
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error loading keys:', error);
+            alert('Error loading keys: ' + error.message);
+        });
 }
 
 function updateTable(keys) {
@@ -93,12 +102,14 @@ async function handleAddKey(event) {
             })
         });
 
-        if (response.ok) {
+        const result = await response.json();
+
+        if (result.success) {
             hideAddKeyModal();
-            loadKeys();
+            await loadKeys();
             document.getElementById('addKeyForm').reset();
         } else {
-            throw new Error('Failed to add key');
+            throw new Error(result.message || 'Failed to add key');
         }
     } catch (error) {
         alert('Error adding key: ' + error.message);
@@ -121,28 +132,32 @@ function viewKey(key) {
     alert(`Key Details:\n${key}`);
 }
 
-function renewKey(key) {
+async function renewKey(key) {
     const newExpirationDate = prompt('Enter new expiration date (YYYY-MM-DD HH:mm:ss):');
     if (newExpirationDate) {
-        fetch('/check_key', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                key_value: key,
-                expires_at: newExpirationDate
-            })
-        })
-        .then(response => {
-            if (response.ok) {
-                loadKeys();
+        try {
+            const response = await fetch('/check_key', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    key_value: key,
+                    expires_at: newExpirationDate
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                await loadKeys();
                 alert('Key renewed successfully');
             } else {
-                throw new Error('Failed to renew key');
+                throw new Error(result.message || 'Failed to renew key');
             }
-        })
-        .catch(error => alert('Error renewing key: ' + error.message));
+        } catch (error) {
+            alert('Error renewing key: ' + error.message);
+        }
     }
 }
 
@@ -159,11 +174,13 @@ async function deleteKey(key) {
                 })
             });
 
-            if (response.ok) {
-                loadKeys();
-                alert('Key deleted successfully');
+            const result = await response.json();
+
+            if (result.success) {
+                await loadKeys();
+                alert(result.message);
             } else {
-                throw new Error('Failed to delete key');
+                throw new Error(result.message || 'Failed to delete key');
             }
         } catch (error) {
             alert('Error deleting key: ' + error.message);
