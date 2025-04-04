@@ -1,59 +1,37 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
     loadKeys();
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-    
     document.querySelector('.filter-btn').addEventListener('click', filterKeys);
     document.querySelector('.add-key-btn').addEventListener('click', showAddKeyModal);
-    document.querySelectorAll('.close').forEach(el => {
-        el.addEventListener('click', () => {
-            document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
-        });
-    });
+    document.querySelector('.close').addEventListener('click', hideAddKeyModal);
     document.getElementById('generateKey').addEventListener('click', generateRandomKey);
     document.getElementById('addKeyForm').addEventListener('submit', handleAddKey);
-    window.addEventListener('click', (e) => {
-        if (e.target.classList.contains('modal')) e.target.style.display = 'none';
+
+    window.addEventListener('click', function(event) {
+        if (event.target === document.getElementById('addKeyModal')) {
+            hideAddKeyModal();
+        }
     });
 });
-
-function updateDateTime() {
-    document.getElementById('currentDateTime').textContent = new Date().toLocaleString();
-}
 
 function showToast(message, type) {
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast toast-${type}`;
-    toast.style.display = 'block';
-    setTimeout(() => toast.style.display = 'none', 3000);
-}
-
-function updateStats(data) {
-    const stats = { active: 0, expired: 0, unused: 0 };
-    if (Array.isArray(data)) {
-        data.forEach(key => {
-            if (key.status in stats) stats[key.status]++;
-        });
-    }
-    Object.keys(stats).forEach(key => {
-        document.getElementById(`${key}Keys`).textContent = stats[key];
-    });
+    setTimeout(() => toast.className = 'toast', 3000);
 }
 
 function loadKeys() {
     document.querySelector('.table-container').classList.add('loading');
-    fetch('/check_key')
+    return fetch('/check_key')
         .then(response => response.json())
         .then(data => {
-            const hwid = data.hwid || 'Not assigned';
-            document.getElementById('deviceId').textContent = hwid;
-            const keysArray = Array.isArray(data) ? data : [];
-            updateTable(keysArray);
-            updateStats(keysArray);
+            updateTable(data);
+            document.querySelector('.table-container').classList.remove('loading');
         })
-        .catch(error => showToast(error.message, 'error'))
-        .finally(() => document.querySelector('.table-container').classList.remove('loading'));
+        .catch(error => {
+            showToast(error.message, 'error');
+            document.querySelector('.table-container').classList.remove('loading');
+        });
 }
 
 function updateTable(keys) {
@@ -61,24 +39,18 @@ function updateTable(keys) {
     tbody.innerHTML = '';
     keys.forEach(key => {
         const row = document.createElement('tr');
+        row.dataset.status = key.status;
         row.innerHTML = `
-            <td><code class="copyable">${key.key_value}</code></td>
-            <td><code class="copyable">${key.hwid || 'Not assigned'}</code></td>
-            <td><span class="status-badge ${key.status}">${key.status}</span></td>
+            <td>${key.key_value}</td>
+            <td class="device-id">${key.device_id || 'Not assigned'}</td>
+            <td>${key.status}</td>
             <td>${formatDate(key.created_at)}</td>
             <td>${formatDate(key.expires_at)}</td>
-            <td>${key.total_uses || 0}</td>
             <td>
                 <div class="action-buttons">
-                    <button class="action-btn view-btn" onclick="viewKey('${key.key_value}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <button class="action-btn renew-btn" onclick="renewKey('${key.key_value}')">
-                        <i class="fas fa-sync"></i> Renew
-                    </button>
-                    <button class="action-btn delete-btn" onclick="deleteKey('${key.key_value}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
+                    <button class="action-btn view-btn" onclick="viewKey('${key.key_value}')">View</button>
+                    <button class="action-btn renew-btn" onclick="renewKey('${key.key_value}')">Renew</button>
+                    <button class="action-btn delete-btn" onclick="deleteKey('${key.key_value}')">Delete</button>
                 </div>
             </td>
         `;
@@ -87,30 +59,39 @@ function updateTable(keys) {
 }
 
 function formatDate(dateString) {
-    return dateString ? new Date(dateString).toLocaleString() : 'N/A';
+    return new Date(dateString).toLocaleString();
 }
 
 function showAddKeyModal() {
-    const modal = document.getElementById('addKeyModal');
-    modal.style.display = 'block';
-    document.getElementById('expirationDate').min = new Date().toISOString().slice(0, 16);
+    document.getElementById('addKeyModal').style.display = 'block';
+    const today = new Date();
+    const minDateTime = today.toISOString().slice(0, 16);
+    document.getElementById('expirationDate').min = minDateTime;
+}
+
+function hideAddKeyModal() {
+    document.getElementById('addKeyModal').style.display = 'none';
+    document.getElementById('addKeyForm').reset();
 }
 
 function generateRandomKey() {
+    const length = 32;
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const key = Array.from({length: 32}, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+    let key = '';
+    for (let i = 0; i < length; i++) {
+        key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
     document.getElementById('keyValue').value = key;
 }
 
-async function handleAddKey(e) {
-    e.preventDefault();
+async function handleAddKey(event) {
+    event.preventDefault();
     const keyValue = document.getElementById('keyValue').value;
+    const deviceId = document.getElementById('deviceId').value;
     const expirationDate = document.getElementById('expirationDate').value;
-    const keyAmount = parseInt(document.getElementById('keyAmount').value) || 1;
-    const hwid = document.getElementById('deviceId').textContent;
 
-    if (!keyValue || !expirationDate || !hwid) {
-        showToast('Please fill all fields', 'error');
+    if (!keyValue || !deviceId || !expirationDate) {
+        showToast('Please fill in all fields', 'error');
         return;
     }
 
@@ -118,13 +99,17 @@ async function handleAddKey(e) {
         const response = await fetch('/check_key', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key_value: keyValue, expires_at: expirationDate, amount: keyAmount, hwid: hwid})
+            body: JSON.stringify({
+                key_value: keyValue,
+                device_id: deviceId,
+                expires_at: expirationDate
+            })
         });
+
         const result = await response.json();
         if (result.success) {
-            document.getElementById('addKeyModal').style.display = 'none';
-            document.getElementById('addKeyForm').reset();
-            loadKeys();
+            hideAddKeyModal();
+            await loadKeys();
             showToast('Key added successfully', 'success');
         } else {
             throw new Error(result.message);
@@ -135,19 +120,21 @@ async function handleAddKey(e) {
 }
 
 function filterKeys() {
-    const searchKey = document.getElementById('searchKey').value;
+    const searchTerm = document.getElementById('searchKey').value;
     const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
     
     document.querySelector('.table-container').classList.add('loading');
-    fetch(`/check_key?search=${searchKey}&device=${searchDevice}&status=${status}`)
+    fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
         .then(response => response.json())
         .then(data => {
             updateTable(data);
-            updateStats(data);
+            document.querySelector('.table-container').classList.remove('loading');
         })
-        .catch(error => showToast(error.message, 'error'))
-        .finally(() => document.querySelector('.table-container').classList.remove('loading'));
+        .catch(error => {
+            showToast(error.message, 'error');
+            document.querySelector('.table-container').classList.remove('loading');
+        });
 }
 
 async function viewKey(key) {
@@ -156,19 +143,7 @@ async function viewKey(key) {
         const data = await response.json();
         if (data.length > 0) {
             const keyInfo = data[0];
-            document.getElementById('keyDetails').innerHTML = `
-                <div class="key-info">
-                    <p><strong>Key:</strong> <code class="copyable">${keyInfo.key_value}</code></p>
-                    <p><strong>HWID:</strong> <code class="copyable">${keyInfo.hwid || 'Not assigned'}</code></p>
-                    <p><strong>Status:</strong> <span class="status-badge ${keyInfo.status}">${keyInfo.status}</span></p>
-                    <p><strong>Created:</strong> ${formatDate(keyInfo.created_at)}</p>
-                    <p><strong>Expires:</strong> ${formatDate(keyInfo.expires_at)}</p>
-                    <p><strong>Total Uses:</strong> ${keyInfo.total_uses || 0}</p>
-                    <p><strong>Last Check:</strong> ${formatDate(keyInfo.last_check)}</p>
-                    <p><strong>Activation Date:</strong> ${formatDate(keyInfo.activation_date)}</p>
-                </div>
-            `;
-            document.getElementById('viewKeyModal').style.display = 'block';
+            alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
         }
     } catch (error) {
         showToast(error.message, 'error');
@@ -176,52 +151,49 @@ async function viewKey(key) {
 }
 
 async function renewKey(key) {
-    const newDate = prompt('Enter new expiration date (YYYY-MM-DD HH:mm:ss):');
-    if (!newDate) return;
+    const newExpirationDate = prompt('Enter new expiration date (YYYY-MM-DD HH:mm:ss):');
+    if (newExpirationDate) {
+        try {
+            const response = await fetch('/check_key', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    key_value: key,
+                    expires_at: newExpirationDate
+                })
+            });
 
-    try {
-        const response = await fetch('/check_key', {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key_value: key, expires_at: newDate})
-        });
-        const result = await response.json();
-        if (result.success) {
-            loadKeys();
-            showToast('Key renewed successfully', 'success');
-        } else {
-            throw new Error(result.message);
+            const result = await response.json();
+            if (result.success) {
+                await loadKeys();
+                showToast('Key renewed successfully', 'success');
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
         }
-    } catch (error) {
-        showToast(error.message, 'error');
     }
 }
 
 async function deleteKey(key) {
-    if (!confirm('Are you sure you want to delete this key?')) return;
+    if (confirm('Are you sure you want to delete this key?')) {
+        try {
+            const response = await fetch('/check_key', {
+                method: 'DELETE',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key_value: key})
+            });
 
-    try {
-        const response = await fetch('/check_key', {
-            method: 'DELETE',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({key_value: key})
-        });
-        const result = await response.json();
-        if (result.success) {
-            loadKeys();
-            showToast('Key deleted successfully', 'success');
-        } else {
-            throw new Error(result.message);
+            const result = await response.json();
+            if (result.success) {
+                await loadKeys();
+                showToast(result.message, 'success');
+            } else {
+                throw new Error(result.message);
+            }
+        } catch (error) {
+            showToast(error.message, 'error');
         }
-    } catch (error) {
-        showToast(error.message, 'error');
     }
 }
-
-document.addEventListener('click', e => {
-    if (e.target.classList.contains('copyable')) {
-        navigator.clipboard.writeText(e.target.textContent)
-            .then(() => showToast('Copied to clipboard!', 'success'))
-            .catch(() => showToast('Failed to copy text', 'error'));
-    }
-});
