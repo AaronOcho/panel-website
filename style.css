@@ -97,7 +97,6 @@ header {
     box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     overflow-x: auto;
     margin-bottom: 20px;
-    position: relative;
 }
 
 table {
@@ -171,6 +170,12 @@ tr:hover {
     height: 100%;
     background-color: rgba(0,0,0,0.5);
     z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .modal-content {
@@ -181,6 +186,12 @@ tr:hover {
     width: 90%;
     max-width: 500px;
     position: relative;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .close {
@@ -190,6 +201,11 @@ tr:hover {
     font-size: 28px;
     cursor: pointer;
     color: #666;
+    transition: color 0.2s ease;
+}
+
+.close:hover {
+    color: #333;
 }
 
 .form-group {
@@ -200,6 +216,7 @@ tr:hover {
     display: block;
     margin-bottom: 5px;
     font-weight: 500;
+    color: #333;
 }
 
 .form-group input {
@@ -207,6 +224,12 @@ tr:hover {
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    transition: border-color 0.2s ease;
+}
+
+.form-group input:focus {
+    border-color: #007bff;
+    outline: none;
 }
 
 #generateKey {
@@ -217,6 +240,11 @@ tr:hover {
     padding: 5px 10px;
     border-radius: 3px;
     cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#generateKey:hover {
+    background-color: #5a6268;
 }
 
 .submit-btn {
@@ -227,17 +255,93 @@ tr:hover {
     border-radius: 4px;
     cursor: pointer;
     width: 100%;
+    font-size: 16px;
+    transition: background-color 0.2s ease;
+}
+
+.submit-btn:hover {
+    background-color: #218838;
+}
+
+
+td:nth-child(2) {
+    font-weight: 500;
+}
+
+tr[data-status="active"] td:nth-child(2) {
+    color: #28a745;
+}
+
+tr[data-status="expired"] td:nth-child(2) {
+    color: #dc3545;
+}
+
+tr[data-status="unused"] td:nth-child(2) {
+    color: #6c757d;
+}
+
+
+@media screen and (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+
+    .search-bar {
+        flex-direction: column;
+    }
+
+    .search-bar input,
+    .search-bar select,
+    .search-bar button {
+        width: 100%;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+
+    .action-btn {
+        width: 100%;
+        margin-bottom: 2px;
+    }
+
+    .modal-content {
+        margin: 5% auto;
+        width: 95%;
+        padding: 15px;
+    }
+
+    th, td {
+        padding: 8px;
+        font-size: 14px;
+    }
+}
+
+
+.loading {
+    position: relative;
+    opacity: 0.7;
+    pointer-events: none;
 }
 
 .loading::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255,255,255,0.8);
+    top: 50%;
+    left: 50%;
+    width: 24px;
+    height: 24px;
+    margin: -12px 0 0 -12px;
+    border: 2px solid #007bff;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
 }
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
 
 .toast {
     position: fixed;
@@ -247,34 +351,37 @@ tr:hover {
     border-radius: 4px;
     color: white;
     z-index: 1100;
-    display: none;
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
 }
 
 .toast-success {
-    display: block;
     background-color: #28a745;
 }
 
 .toast-error {
-    display: block;
     background-color: #dc3545;
 }
 
-@media screen and (max-width: 768px) {
-    .container {
-        padding: 10px;
-    }
-    
-    .search-bar {
-        flex-direction: column;
-    }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .modal-content {
-        margin: 5% auto;
-        width: 95%;
-    }
+/* Custom scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
