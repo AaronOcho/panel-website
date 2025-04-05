@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Winter Key System</title>
+    <title>License Key System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Winter Key System (MBF)</h1>
+            <h1>License Key System (LORD)</h1>
             <span class="version">version 1.0</span>
         </header>
 
@@ -24,7 +24,6 @@
 
         <div class="search-bar">
             <input type="text" id="searchKey" placeholder="Search by key" class="search-input">
-            <input type="text" id="searchDevice" placeholder="Search by device ID" class="search-input">
             <select id="filterStatus" class="filter-select">
                 <option value="all">All</option>
                 <option value="active">Active</option>
@@ -39,7 +38,7 @@
                 <thead>
                     <tr>
                         <th>Key</th>
-                        <th>Device ID</th>
+                        <th>Users</th>
                         <th>Status</th>
                         <th>Created At</th>
                         <th>Expires At</th>
@@ -62,8 +61,8 @@
                     <button type="button" id="generateKey" class="generate-btn">Generate Key</button>
                 </div>
                 <div class="form-group">
-                    <label for="deviceId">Device ID:</label>
-                    <input type="text" id="deviceId" name="deviceId" required>
+                    <label for="maxUsers">Maximum Users:</label>
+                    <input type="number" id="maxUsers" name="maxUsers" min="1" required>
                 </div>
                 <div class="form-group">
                     <label for="expirationDate">Expiration Date:</label>
