@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.close').addEventListener('click', hideAddKeyModal);
     document.getElementById('generateKey').addEventListener('click', generateRandomKey);
     document.getElementById('addKeyForm').addEventListener('submit', handleAddKey);
-
+    
     window.addEventListener('click', function(event) {
         if (event.target === document.getElementById('addKeyModal')) {
             hideAddKeyModal();
@@ -16,9 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadKeys() {
     return fetch('/check_key')
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
+            if (!response.ok) throw new Error('Network response was not ok');
             return response.json();
         })
         .then(data => {
@@ -34,12 +32,19 @@ function loadKeys() {
 function updateTable(keys) {
     const tbody = document.getElementById('keyTableBody');
     tbody.innerHTML = '';
-
+    
     keys.forEach(key => {
+        const deviceStatus = key.device_id ? 
+            (key.current_device_id === key.device_id ? 'Matched' : 'Mismatched') : 
+            'Not assigned';
+        
+        const statusClass = deviceStatus === 'Mismatched' ? 'text-danger' : 
+                          deviceStatus === 'Matched' ? 'text-success' : '';
+        
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${key.key_value}</td>
-            <td class="device-id">${key.device_id || 'Not assigned'}</td>
+            <td class="device-id ${statusClass}">${key.device_id || 'Not assigned'}</td>
             <td>${key.status}</td>
             <td>${formatDate(key.created_at)}</td>
             <td>${formatDate(key.expires_at)}</td>
@@ -82,36 +87,38 @@ function generateRandomKey() {
 
 async function handleAddKey(event) {
     event.preventDefault();
-
+    
     const keyValue = document.getElementById('keyValue').value;
     const deviceId = document.getElementById('deviceId').value;
     const expirationDate = document.getElementById('expirationDate').value;
-
+    
     if (!keyValue || !deviceId || !expirationDate) {
         alert('Please fill in all fields');
         return;
     }
-
+    
     try {
         const response = await fetch('/check_key', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
                 key_value: keyValue,
                 device_id: deviceId,
-                expires_at: expirationDate
+                expires_at: expirationDate,
+                enforce_device_check: true
             })
         });
-
+        
         const result = await response.json();
-
         if (result.success) {
             hideAddKeyModal();
             await loadKeys();
             document.getElementById('addKeyForm').reset();
         } else {
+            if (result.error === 'device_mismatch') {
+                alert('Device ID mismatch. Access denied.');
+                return;
+            }
             throw new Error(result.message || 'Failed to add key');
         }
     } catch (error) {
@@ -123,13 +130,41 @@ function filterKeys() {
     const searchTerm = document.getElementById('searchKey').value;
     const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
-
+    
     fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
         .then(response => response.json())
-        .then(data => {
-            updateTable(data);
-        })
+        .then(data => updateTable(data))
         .catch(error => console.error('Error:', error));
+}
+
+async function validateKey(key, deviceId) {
+    try {
+        const response = await fetch('/check_key/validate', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                key_value: key,
+                device_id: deviceId
+            })
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+            if (result.error === 'device_mismatch') {
+                alert('This key is registered to a different device. Access denied.');
+                return false;
+            }
+            if (result.error === 'expired') {
+                alert('This key has expired.');
+                return false;
+            }
+            throw new Error(result.message || 'Invalid key');
+        }
+        return true;
+    } catch (error) {
+        alert('Error validating key: ' + error.message);
+        return false;
+    }
 }
 
 function viewKey(key) {
@@ -138,7 +173,11 @@ function viewKey(key) {
         .then(data => {
             if (data.length > 0) {
                 const keyInfo = data[0];
-                alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
+                const deviceStatus = keyInfo.device_id ? 
+                    (keyInfo.current_device_id === keyInfo.device_id ? 'Matched' : 'Mismatched') : 
+                    'Not assigned';
+                
+                alert(`Key Details:\nKey: ${keyInfo.key_value}\nDevice ID: ${keyInfo.device_id || 'Not assigned'}\nDevice Status: ${deviceStatus}\nStatus: ${keyInfo.status}\nCreated: ${formatDate(keyInfo.created_at)}\nExpires: ${formatDate(keyInfo.expires_at)}`);
             }
         })
         .catch(error => console.error('Error:', error));
@@ -150,17 +189,14 @@ async function renewKey(key) {
         try {
             const response = await fetch('/check_key', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     key_value: key,
                     expires_at: newExpirationDate
                 })
             });
-
+            
             const result = await response.json();
-
             if (result.success) {
                 await loadKeys();
                 alert('Key renewed successfully');
@@ -178,16 +214,11 @@ async function deleteKey(key) {
         try {
             const response = await fetch('/check_key', {
                 method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    key_value: key
-                })
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({key_value: key})
             });
-
+            
             const result = await response.json();
-
             if (result.success) {
                 await loadKeys();
                 alert(result.message);
