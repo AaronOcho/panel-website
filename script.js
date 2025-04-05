@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('.close').addEventListener('click', hideAddKeyModal);
     document.getElementById('generateKey').addEventListener('click', generateRandomKey);
     document.getElementById('addKeyForm').addEventListener('submit', handleAddKey);
-    
+
     window.addEventListener('click', function(event) {
         if (event.target === document.getElementById('addKeyModal')) {
             hideAddKeyModal();
@@ -34,12 +34,12 @@ function loadKeys() {
 function updateTable(keys) {
     const tbody = document.getElementById('keyTableBody');
     tbody.innerHTML = '';
-    
+
     keys.forEach(key => {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${key.key_value}</td>
-            <td class="device-id">${key.device_id || 'Not assigned'}</td>
+            <td>${key.current_users}/${key.max_users} users</td>
             <td>${key.status}</td>
             <td>${formatDate(key.created_at)}</td>
             <td>${formatDate(key.expires_at)}</td>
@@ -82,16 +82,16 @@ function generateRandomKey() {
 
 async function handleAddKey(event) {
     event.preventDefault();
-    
+
     const keyValue = document.getElementById('keyValue').value;
-    const deviceId = document.getElementById('deviceId').value;
+    const maxUsers = document.getElementById('maxUsers').value;
     const expirationDate = document.getElementById('expirationDate').value;
-    
-    if (!keyValue || !deviceId || !expirationDate) {
+
+    if (!keyValue || !maxUsers || !expirationDate) {
         alert('Please fill in all fields');
         return;
     }
-    
+
     try {
         const response = await fetch('/check_key', {
             method: 'POST',
@@ -100,11 +100,11 @@ async function handleAddKey(event) {
             },
             body: JSON.stringify({
                 key_value: keyValue,
-                device_id: deviceId,
+                max_users: parseInt(maxUsers),
                 expires_at: expirationDate
             })
         });
-        
+
         const result = await response.json();
         if (result.success) {
             hideAddKeyModal();
@@ -120,10 +120,9 @@ async function handleAddKey(event) {
 
 function filterKeys() {
     const searchTerm = document.getElementById('searchKey').value;
-    const searchDevice = document.getElementById('searchDevice').value;
     const status = document.getElementById('filterStatus').value;
-    
-    fetch(`/check_key?search=${searchTerm}&device=${searchDevice}&status=${status}`)
+
+    fetch(`/check_key?search=${searchTerm}&status=${status}`)
         .then(response => response.json())
         .then(data => {
             updateTable(data);
@@ -139,7 +138,7 @@ function viewKey(key) {
                 const keyInfo = data[0];
                 alert(`Key Details:
                     Key: ${keyInfo.key_value}
-                    Device ID: ${keyInfo.device_id || 'Not assigned'}
+                    Users: ${keyInfo.current_users}/${keyInfo.max_users}
                     Status: ${keyInfo.status}
                     Created: ${formatDate(keyInfo.created_at)}
                     Expires: ${formatDate(keyInfo.expires_at)}`);
@@ -162,7 +161,7 @@ async function renewKey(key) {
                     expires_at: newExpirationDate
                 })
             });
-            
+
             const result = await response.json();
             if (result.success) {
                 await loadKeys();
@@ -188,7 +187,7 @@ async function deleteKey(key) {
                     key_value: key
                 })
             });
-            
+
             const result = await response.json();
             if (result.success) {
                 await loadKeys();
