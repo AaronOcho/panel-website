@@ -24,7 +24,6 @@ try {
     CREATE TABLE IF NOT EXISTS license_keys (
         id SERIAL PRIMARY KEY,
         key_value VARCHAR(255) UNIQUE NOT NULL,
-        device_id VARCHAR(255),
         status VARCHAR(50) DEFAULT 'unused',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         expires_at TIMESTAMP NOT NULL,
@@ -32,18 +31,21 @@ try {
         hwid VARCHAR(255),
         last_check TIMESTAMP,
         activation_date TIMESTAMP,
-        total_uses INTEGER DEFAULT 0
+        total_uses INTEGER DEFAULT 0,
+        max_users INTEGER DEFAULT 1,
+        current_users INTEGER DEFAULT 0
     )";
 
     $conn->exec($createTableSQL);
 
     $alterTableCommands = [
-        "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS device_id VARCHAR(255)",
         "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS is_used BOOLEAN DEFAULT FALSE",
         "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS hwid VARCHAR(255)",
         "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS last_check TIMESTAMP",
         "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS activation_date TIMESTAMP",
-        "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS total_uses INTEGER DEFAULT 0"
+        "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS total_uses INTEGER DEFAULT 0",
+        "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS max_users INTEGER DEFAULT 1",
+        "ALTER TABLE license_keys ADD COLUMN IF NOT EXISTS current_users INTEGER DEFAULT 0"
     ];
 
     foreach ($alterTableCommands as $alterCommand) {
@@ -67,44 +69,47 @@ try {
             $current_time = new DateTime();
 
             if ($expires_at > $current_time) {
-                if (!$key_data['hwid']) {
-                    $update_stmt = $conn->prepare("
-                        UPDATE license_keys 
-                        SET hwid = ?, 
-                            status = 'active', 
-                            activation_date = CURRENT_TIMESTAMP,
-                            last_check = CURRENT_TIMESTAMP,
-                            total_uses = 1
-                        WHERE key_value = ?
-                    ");
-                    $update_stmt->execute([$hwid, $key]);
-                    echo json_encode([
-                        'valid' => true,
-                        'status' => 'active',
-                        'expires_at' => $key_data['expires_at'],
-                        'message' => 'Key activated successfully',
-                        'activation_date' => date('Y-m-d H:i:s')
-                    ]);
-                } elseif ($key_data['hwid'] === $hwid) {
-                    $update_stmt = $conn->prepare("
-                        UPDATE license_keys 
-                        SET last_check = CURRENT_TIMESTAMP,
-                            total_uses = total_uses + 1
-                        WHERE key_value = ?
-                    ");
-                    $update_stmt->execute([$key]);
-                    echo json_encode([
-                        'valid' => true,
-                        'status' => $key_data['status'],
-                        'expires_at' => $key_data['expires_at'],
-                        'message' => 'Key valid',
-                        'activation_date' => $key_data['activation_date'],
-                        'total_uses' => $key_data['total_uses'] + 1
-                    ]);
+                if ($key_data['current_users'] < $key_data['max_users']) {
+                    if (!$key_data['hwid']) {
+                        $update_stmt = $conn->prepare("
+                            UPDATE license_keys 
+                            SET hwid = ?, 
+                                status = 'active', 
+                                activation_date = CURRENT_TIMESTAMP,
+                                last_check = CURRENT_TIMESTAMP,
+                                current_users = current_users + 1
+                            WHERE key_value = ?
+                        ");
+                        $update_stmt->execute([$hwid, $key]);
+                        echo json_encode([
+                            'valid' => true,
+                            'status' => 'active',
+                            'expires_at' => $key_data['expires_at'],
+                            'message' => 'Key activated successfully'
+                        ]);
+                    } elseif ($key_data['hwid'] === $hwid) {
+                        $update_stmt = $conn->prepare("
+                            UPDATE license_keys 
+                            SET last_check = CURRENT_TIMESTAMP
+                            WHERE key_value = ?
+                        ");
+                        $update_stmt->execute([$key]);
+                        echo json_encode([
+                            'valid' => true,
+                            'status' => $key_data['status'],
+                            'expires_at' => $key_data['expires_at'],
+                            'message' => 'Key valid'
+                        ]);
+                    } else {
+                        echo json_encode([
+                            'valid' => false,
+                            'message' => 'Key is bound to a different device'
+                        ]);
+                    }
                 } else {
                     echo json_encode([
                         'valid' => false,
-                        'message' => 'Key is bound to a different device'
+                        'message' => 'Maximum number of users reached'
                     ]);
                 }
             } else {
@@ -172,8 +177,8 @@ try {
         $data = json_decode(file_get_contents('php://input'), true);
         $conn->beginTransaction();
         try {
-            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, device_id, expires_at) VALUES (?, ?, ?)");
-            $result = $stmt->execute([$data['key_value'], $data['device_id'], $data['expires_at']]);
+            $stmt = $conn->prepare("INSERT INTO license_keys (key_value, expires_at, max_users) VALUES (?, ?, ?)");
+            $result = $stmt->execute([$data['key_value'], $data['expires_at'], $data['max_users']]);
             if ($result) {
                 $conn->commit();
                 echo json_encode(['success' => true, 'message' => 'Key added successfully']);
@@ -192,7 +197,6 @@ try {
 
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $search = $_GET['search'] ?? '';
-        $device = $_GET['device'] ?? '';
         $status = $_GET['status'] ?? 'all';
         $key = $_GET['key'] ?? '';
 
@@ -207,11 +211,6 @@ try {
         if ($search) {
             $query .= " AND key_value LIKE ?";
             $params[] = "%$search%";
-        }
-
-        if ($device) {
-            $query .= " AND device_id LIKE ?";
-            $params[] = "%$device%";
         }
 
         if ($status !== 'all') {
